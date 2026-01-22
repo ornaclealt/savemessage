@@ -3,275 +3,262 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buku Tamu Digital - Backend Demo</title>
-    <!-- Tailwind CSS untuk Styling Cepat & Responsif -->
+    <title>Buku Tamu Digital</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        /* Animasi loading sederhana */
-        .loader {
-            border: 3px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 3px solid #3b82f6;
-            width: 20px;
-            height: 20px;
-            -webkit-animation: spin 1s linear infinite; /* Safari */
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
-    <!-- Navbar Sederhana -->
     <nav class="bg-white shadow-sm border-b border-slate-200">
         <div class="max-w-3xl mx-auto px-4 py-4 flex justify-between items-center">
-            <h1 class="text-xl font-semibold text-slate-800 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
-                </svg>
-                Backend Demo
-            </h1>
-            <span id="status-indicator" class="text-xs font-medium px-2 py-1 bg-gray-100 text-gray-500 rounded-full flex items-center gap-1">
-                <span class="w-2 h-2 rounded-full bg-gray-400"></span> Offline
+            <h1 class="text-xl font-semibold text-slate-800">Buku Tamu Digital</h1>
+            <span id="status-badge" class="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                Memuat Sistem...
             </span>
         </div>
     </nav>
 
-    <!-- Konten Utama -->
     <main class="flex-grow max-w-3xl mx-auto px-4 py-8 w-full">
-        
-        <!-- Bagian Input (Create) -->
+        <!-- Notifikasi Mode -->
+        <div id="mode-notification" class="hidden mb-6 p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-800">
+            <!-- Isi notifikasi akan diatur via JS -->
+        </div>
+
+        <!-- Input Form -->
         <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
-            <h2 class="text-lg font-semibold mb-4 text-slate-700">Tulis Pesan ke Server</h2>
+            <h2 class="text-lg font-semibold mb-4 text-slate-700">Tulis Pesan</h2>
             <form id="guestbook-form" class="space-y-4">
                 <div>
-                    <label for="name" class="block text-sm font-medium text-slate-600 mb-1">Nama Anda</label>
-                    <input type="text" id="name" required placeholder="Contoh: Budi Santoso" 
-                        class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition duration-200">
+                    <label class="block text-sm font-medium text-slate-600 mb-1">Nama</label>
+                    <input type="text" id="name" required placeholder="Nama Anda" class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none">
                 </div>
                 <div>
-                    <label for="message" class="block text-sm font-medium text-slate-600 mb-1">Pesan</label>
-                    <textarea id="message" required rows="3" placeholder="Tuliskan sesuatu yang akan disimpan di database..." 
-                        class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition duration-200 resize-none"></textarea>
+                    <label class="block text-sm font-medium text-slate-600 mb-1">Pesan</label>
+                    <textarea id="message" required rows="3" placeholder="Tulis pesan di sini..." class="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-100 outline-none resize-none"></textarea>
                 </div>
                 <div class="flex justify-end">
-                    <button type="submit" id="submit-btn" disabled
-                        class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-                        <span>Kirim Pesan</span>
+                    <button type="submit" id="submit-btn" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition">
+                        Kirim Pesan
                     </button>
                 </div>
             </form>
         </section>
 
-        <!-- Bagian List (Read & Delete) -->
+        <!-- Message List -->
         <section>
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-semibold text-slate-700">Daftar Pesan Masuk</h2>
-                <span class="text-sm text-slate-500">Real-time update</span>
+                <h2 class="text-lg font-semibold text-slate-700">Riwayat Pesan</h2>
+                <button onclick="resetLocalData()" id="reset-btn" class="hidden text-xs text-red-400 hover:text-red-600">Reset Data</button>
             </div>
-            
             <div id="messages-container" class="space-y-3">
-                <!-- Pesan akan dimuat di sini oleh JavaScript -->
-                <div class="text-center py-10 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
-                    <p>Memuat data dari backend...</p>
-                </div>
+                <p class="text-center text-gray-400 py-8">Memuat...</p>
             </div>
         </section>
-
     </main>
 
-    <footer class="text-center py-6 text-sm text-slate-400">
-        <p>&copy; 2024 Demo Sistem Backend Sederhana</p>
-    </footer>
-
-    <!-- Firebase SDK Setup -->
+    <!-- Script Utama (Hybrid System) -->
     <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
-        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, serverTimestamp, orderBy, query } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, serverTimestamp, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
-        // 1. Inisialisasi Firebase (Penghubung ke Backend)
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        
-        // Collection path sesuai aturan keamanan sistem
-        const COLLECTION_NAME = 'messages'; 
-        let user = null;
+        // --- SISTEM DETEKSI OTOMATIS ---
+        let useLocalStorage = false;
+        let db, auth, user, appId;
+        const COLLECTION_NAME = 'guestbook_auto';
 
         // Elemen UI
+        const statusBadge = document.getElementById('status-badge');
+        const notifBox = document.getElementById('mode-notification');
+        const container = document.getElementById('messages-container');
         const form = document.getElementById('guestbook-form');
-        const submitBtn = document.getElementById('submit-btn');
-        const messagesContainer = document.getElementById('messages-container');
-        const statusIndicator = document.getElementById('status-indicator');
+        const resetBtn = document.getElementById('reset-btn');
 
-        // 2. Fungsi Login (Autentikasi)
-        // Kita perlu login dulu sebelum bisa baca/tulis database
-        const initAuth = async () => {
-            try {
+        async function initSystem() {
+            // 1. Cek apakah ada config Firebase dari environment (Preview Mode)
+            if (typeof __firebase_config !== 'undefined') {
+                console.log("Mode: Online (Preview)");
+                const firebaseConfig = JSON.parse(__firebase_config);
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'default';
+                
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Login
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await signInAnonymously(auth);
                 }
-            } catch (error) {
-                console.error("Auth error:", error);
-                statusIndicator.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500"></span> Error Auth`;
-            }
-        };
-
-        // 3. Listener Status Login
-        onAuthStateChanged(auth, (currentUser) => {
-            user = currentUser;
-            if (user) {
-                // Jika sudah login, aktifkan UI dan mulai dengarkan data
-                statusIndicator.innerHTML = `<span class="w-2 h-2 rounded-full bg-green-500"></span> Terhubung`;
-                statusIndicator.classList.replace('bg-gray-100', 'bg-green-50');
-                statusIndicator.classList.replace('text-gray-500', 'text-green-600');
-                submitBtn.disabled = false;
                 
-                // Panggil fungsi untuk mendengarkan perubahan data
-                subscribeToMessages();
+                setupRealtimeListener();
+                updateStatusUI("Online (Cloud)", "green");
+            
             } else {
-                statusIndicator.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-400"></span> Terputus`;
-                submitBtn.disabled = true;
+                // 2. Jika di GitHub dan tidak ada config -> MODE OFFLINE/LOCAL
+                console.log("Mode: Offline (GitHub/Local)");
+                useLocalStorage = true;
+                user = { uid: 'local-user' }; // User palsu
+                
+                setupLocalListener();
+                updateStatusUI("Mode Demo (Lokal)", "orange");
+                
+                // Tampilkan info ke user
+                notifBox.classList.remove('hidden');
+                notifBox.innerHTML = `
+                    <strong>Info Mode Demo:</strong> Karena belum ada backend terhubung, 
+                    sistem beralih ke penyimpanan browser. Pesan Anda tetap tersimpan di HP/Laptop ini, 
+                    tapi tidak bisa dilihat orang lain secara online.
+                `;
+                resetBtn.classList.remove('hidden');
             }
-        });
+        }
 
-        // 4. Fungsi Mengambil Data Real-time (Read)
-        function subscribeToMessages() {
-            // Mengambil referensi koleksi data publik
-            const q = collection(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME);
+        // --- FUNGSI UPDATE UI ---
+        function updateStatusUI(text, color) {
+            const colors = {
+                green: "bg-green-100 text-green-700",
+                orange: "bg-orange-100 text-orange-700",
+                gray: "bg-gray-100 text-gray-600"
+            };
+            statusBadge.className = `px-3 py-1 rounded-full text-xs font-medium ${colors[color] || colors.gray}`;
+            statusBadge.innerText = text;
+        }
 
-            // onSnapshot adalah "pendengar" aktif. Setiap ada perubahan di server, fungsi ini jalan.
-            onSnapshot(q, (snapshot) => {
-                messagesContainer.innerHTML = ''; // Reset container
+        function renderMessages(messages) {
+            container.innerHTML = '';
+            if (messages.length === 0) {
+                container.innerHTML = `<div class="text-center py-10 border border-dashed border-slate-300 rounded-xl text-slate-400">Belum ada pesan.</div>`;
+                return;
+            }
 
-                if (snapshot.empty) {
-                    messagesContainer.innerHTML = `
-                        <div class="text-center py-10 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
-                            <p>Belum ada pesan. Jadilah yang pertama menulis!</p>
-                        </div>`;
-                    return;
-                }
-
-                // Konversi data snapshot ke array biasa lalu sort (karena limitasi query complex di sini)
-                const messages = [];
-                snapshot.forEach((doc) => {
-                    messages.push({ id: doc.id, ...doc.data() });
-                });
-
-                // Sort di client side (Terbaru di atas)
-                messages.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-
-                // Render ke HTML
-                messages.forEach((msg) => {
-                    const el = createMessageElement(msg);
-                    messagesContainer.appendChild(el);
-                });
-            }, (error) => {
-                console.error("Gagal mengambil data:", error);
-                messagesContainer.innerHTML = `<p class="text-red-500 text-center">Gagal memuat data.</p>`;
+            messages.forEach(msg => {
+                const date = msg.timestamp ? new Date(msg.timestamp).toLocaleString() : 'Baru saja';
+                const div = document.createElement('div');
+                div.className = 'bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-start';
+                div.innerHTML = `
+                    <div>
+                        <h3 class="font-bold text-slate-700">${escapeHtml(msg.name)}</h3>
+                        <p class="text-slate-600 mt-1">${escapeHtml(msg.text)}</p>
+                        <span class="text-xs text-slate-400 mt-2 block">${date}</span>
+                    </div>
+                    <button onclick="window.deleteItem('${msg.id}')" class="text-red-300 hover:text-red-500 font-bold text-xl px-2">&times;</button>
+                `;
+                container.appendChild(div);
             });
         }
 
-        // Helper untuk membuat elemen HTML pesan
-        function createMessageElement(msg) {
-            const div = document.createElement('div');
-            div.className = 'bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-start group hover:border-blue-200 transition-colors';
+        // --- LOGIKA FIREBASE (ONLINE) ---
+        function setupRealtimeListener() {
+            // Path khusus untuk environment ini
+            const q = query(collection(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME), orderBy('timestamp', 'desc'));
             
-            const timeString = msg.timestamp ? new Date(msg.timestamp.seconds * 1000).toLocaleString('id-ID', {
-                day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-            }) : 'Baru saja';
-
-            div.innerHTML = `
-                <div>
-                    <h3 class="font-semibold text-slate-800">${escapeHtml(msg.name)}</h3>
-                    <p class="text-slate-600 mt-1 text-sm leading-relaxed">${escapeHtml(msg.text)}</p>
-                    <span class="text-xs text-slate-400 mt-2 block">${timeString}</span>
-                </div>
-                <button onclick="window.deleteMessage('${msg.id}')" 
-                    class="text-slate-300 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100" title="Hapus pesan">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                </button>
-            `;
-            return div;
+            onSnapshot(q, (snapshot) => {
+                const msgs = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    timestamp: doc.data().timestamp?.toDate() // Konversi timestamp firebase
+                }));
+                renderMessages(msgs);
+            });
         }
 
-        // 5. Fungsi Mengirim Data (Create)
+        // --- LOGIKA LOCAL STORAGE (OFFLINE/GITHUB) ---
+        function setupLocalListener() {
+            loadLocalData();
+            // LocalStorage tidak punya real-time listener bawaan antar tab, 
+            // jadi kita refresh manual saat ada aksi.
+        }
+
+        function loadLocalData() {
+            const data = localStorage.getItem('guestbook_local_data');
+            const msgs = data ? JSON.parse(data) : [];
+            // Sort terbaru di atas
+            msgs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            renderMessages(msgs);
+        }
+
+        function saveLocalData(name, text) {
+            const data = localStorage.getItem('guestbook_local_data');
+            const msgs = data ? JSON.parse(data) : [];
+            
+            msgs.push({
+                id: 'local_' + Date.now(),
+                name: name,
+                text: text,
+                timestamp: new Date().toISOString(), // Simpan string ISO
+                userId: 'local-user'
+            });
+            
+            localStorage.setItem('guestbook_local_data', JSON.stringify(msgs));
+            loadLocalData(); // Refresh UI
+        }
+
+        // --- HANDLER FORM ---
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!user) return;
+            const name = document.getElementById('name').value;
+            const text = document.getElementById('message').value;
+            const btn = document.getElementById('submit-btn');
 
-            const nameInput = document.getElementById('name');
-            const msgInput = document.getElementById('message');
-            const originalBtnContent = submitBtn.innerHTML;
-
-            // UI Loading state
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = `<div class="loader mr-2"></div> Mengirim...`;
+            btn.disabled = true;
+            btn.innerText = "Mengirim...";
 
             try {
-                // Simpan ke Firestore
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME), {
-                    name: nameInput.value,
-                    text: msgInput.value,
-                    timestamp: serverTimestamp(),
-                    userId: user.uid // Menyimpan ID pengirim (opsional untuk fitur lanjutan)
-                });
-
-                // Reset form
+                if (useLocalStorage) {
+                    // Simpan Lokal
+                    saveLocalData(name, text);
+                    // Simulasi delay jaringan sedikit biar terasa 'real'
+                    await new Promise(r => setTimeout(r, 500)); 
+                } else {
+                    // Simpan Cloud
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME), {
+                        name: name,
+                        text: text,
+                        timestamp: serverTimestamp(),
+                        userId: auth.currentUser.uid
+                    });
+                }
                 form.reset();
-            } catch (error) {
-                console.error("Error mengirim:", error);
-                alert("Gagal mengirim pesan.");
+            } catch (err) {
+                alert("Error: " + err.message);
             } finally {
-                // Kembalikan tombol ke semula
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalBtnContent;
+                btn.disabled = false;
+                btn.innerText = "Kirim Pesan";
             }
         });
 
-        // 6. Fungsi Menghapus Data (Delete)
-        // Kita attach ke window agar bisa dipanggil dari HTML string onclick
-        window.deleteMessage = async (docId) => {
-            if (!user) return;
-            
-            // Konfirmasi sederhana
-            if(!confirm("Yakin ingin menghapus pesan ini?")) return;
+        // --- HANDLER DELETE (GLOBAL) ---
+        window.deleteItem = async (id) => {
+            if(!confirm("Hapus pesan ini?")) return;
 
-            try {
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME, docId);
-                await deleteDoc(docRef);
-            } catch (error) {
-                console.error("Error menghapus:", error);
-                alert("Gagal menghapus pesan.");
+            if (useLocalStorage) {
+                const data = JSON.parse(localStorage.getItem('guestbook_local_data') || "[]");
+                const newData = data.filter(item => item.id !== id);
+                localStorage.setItem('guestbook_local_data', JSON.stringify(newData));
+                loadLocalData();
+            } else {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME, id));
             }
         };
 
-        // Keamanan: Mencegah XSS (Cross Site Scripting)
+        window.resetLocalData = () => {
+            if(confirm("Hapus semua data lokal?")) {
+                localStorage.removeItem('guestbook_local_data');
+                loadLocalData();
+            }
+        };
+
         function escapeHtml(text) {
-            if (!text) return "";
-            return text
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+            return text ? text.replace(/</g, "&lt;").replace(/>/g, "&gt;") : "";
         }
 
-        // Jalankan inisialisasi
-        initAuth();
+        // Jalankan Sistem
+        initSystem();
 
     </script>
 </body>
