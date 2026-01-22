@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buku Tamu Digital</title>
+    <title>Grup Bonbin</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
@@ -14,7 +14,7 @@
 
     <nav class="bg-white shadow-sm border-b border-slate-200">
         <div class="max-w-3xl mx-auto px-4 py-4 flex justify-between items-center">
-            <h1 class="text-xl font-semibold text-slate-800">Buku Tamu Digital</h1>
+            <h1 class="text-xl font-semibold text-slate-800">Grup Bonbin</h1>
             <span id="status-badge" class="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
                 Memuat Sistem...
             </span>
@@ -23,7 +23,7 @@
 
     <main class="flex-grow max-w-3xl mx-auto px-4 py-8 w-full">
         <!-- Notifikasi Mode -->
-        <div id="mode-notification" class="hidden mb-6 p-4 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-800">
+        <div id="mode-notification" class="hidden mb-6 p-4 rounded-lg text-sm border">
             <!-- Isi notifikasi akan diatur via JS -->
         </div>
 
@@ -78,43 +78,74 @@
         const resetBtn = document.getElementById('reset-btn');
 
         async function initSystem() {
-            // 1. Cek apakah ada config Firebase dari environment (Preview Mode)
+            // 1. Cek apakah di Canvas Preview (Prioritas 1: Gunakan Env Var Internal)
+            // Ini agar preview di sini tetap jalan lancar tanpa mengganggu config Anda
             if (typeof __firebase_config !== 'undefined') {
                 console.log("Mode: Online (Preview)");
                 const firebaseConfig = JSON.parse(__firebase_config);
                 appId = typeof __app_id !== 'undefined' ? __app_id : 'default';
+                initFirebase(firebaseConfig, true);
+            
+            } else {
+                // 2. Cek apakah User sudah memasukkan Config (Untuk GitHub)
                 
-                const app = initializeApp(firebaseConfig);
+                // ✅ CONFIG ANDA SUDAH TERPASANG DI SINI
+                const myFirebaseConfig = {
+                    apiKey: "AIzaSyApD7dueaFuPv9hHGajcwo17LADEVriqRw",
+                    authDomain: "entry-6a64d.firebaseapp.com",
+                    projectId: "entry-6a64d",
+                    storageBucket: "entry-6a64d.firebasestorage.app",
+                    messagingSenderId: "939693440034",
+                    appId: "1:939693440034:web:ecd3d0366acf207add1e7b",
+                    measurementId: "G-RPTFXQK08B"
+                };
+
+                if (myFirebaseConfig) {
+                    // Config ada -> ONLINE
+                    initFirebase(myFirebaseConfig, false);
+                } else {
+                    // Fallback -> OFFLINE
+                    console.log("Mode: Offline (GitHub/Local)");
+                    useLocalStorage = true;
+                    user = { uid: 'local-user' };
+                    
+                    setupLocalListener();
+                    updateStatusUI("Mode Pribadi (Offline)", "orange");
+                    
+                    notifBox.className = "mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-800 block";
+                    notifBox.innerHTML = `
+                        <strong>⚠ Mode Pribadi Aktif:</strong><br>
+                        Website belum terhubung ke database.
+                    `;
+                    resetBtn.classList.remove('hidden');
+                }
+            }
+        }
+
+        async function initFirebase(config, isCanvas) {
+            try {
+                const app = initializeApp(config);
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // Login
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                // Login Logic
+                if (isCanvas && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await signInAnonymously(auth);
                 }
                 
-                setupRealtimeListener();
-                updateStatusUI("Online (Cloud)", "green");
-            
-            } else {
-                // 2. Jika di GitHub dan tidak ada config -> MODE OFFLINE/LOCAL
-                console.log("Mode: Offline (GitHub/Local)");
-                useLocalStorage = true;
-                user = { uid: 'local-user' }; // User palsu
+                setupRealtimeListener(isCanvas);
+                updateStatusUI("Online (Publik)", "green");
                 
-                setupLocalListener();
-                updateStatusUI("Mode Demo (Lokal)", "orange");
+                // Hilangkan notifikasi error jika berhasil online
+                notifBox.className = "hidden";
                 
-                // Tampilkan info ke user
-                notifBox.classList.remove('hidden');
-                notifBox.innerHTML = `
-                    <strong>Info Mode Demo:</strong> Karena belum ada backend terhubung, 
-                    sistem beralih ke penyimpanan browser. Pesan Anda tetap tersimpan di HP/Laptop ini, 
-                    tapi tidak bisa dilihat orang lain secara online.
-                `;
-                resetBtn.classList.remove('hidden');
+            } catch (error) {
+                console.error("Firebase Error:", error);
+                // Jika error API Key tidak valid di GitHub, biasanya karena salah copy atau project dihapus
+                notifBox.className = "mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800 block";
+                notifBox.innerHTML = `<strong>Koneksi Error:</strong> ${error.message}`;
             }
         }
 
@@ -153,9 +184,14 @@
         }
 
         // --- LOGIKA FIREBASE (ONLINE) ---
-        function setupRealtimeListener() {
-            // Path khusus untuk environment ini
-            const q = query(collection(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME), orderBy('timestamp', 'desc'));
+        function setupRealtimeListener(isCanvas) {
+            let q;
+            if (isCanvas) {
+                q = query(collection(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME), orderBy('timestamp', 'desc'));
+            } else {
+                // Mode GitHub Online (Standard Collection)
+                q = query(collection(db, 'guestbook_public'), orderBy('timestamp', 'desc'));
+            }
             
             onSnapshot(q, (snapshot) => {
                 const msgs = snapshot.docs.map(doc => ({
@@ -164,20 +200,23 @@
                     timestamp: doc.data().timestamp?.toDate() // Konversi timestamp firebase
                 }));
                 renderMessages(msgs);
+            }, (error) => {
+                console.error("Snapshot Error:", error);
+                if(error.code === 'permission-denied') {
+                     notifBox.className = "mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800 block";
+                     notifBox.innerHTML = "<strong>Izin Ditolak:</strong> Pastikan Database Firestore dalam 'Test Mode' di Console Firebase Anda.";
+                }
             });
         }
 
         // --- LOGIKA LOCAL STORAGE (OFFLINE/GITHUB) ---
         function setupLocalListener() {
             loadLocalData();
-            // LocalStorage tidak punya real-time listener bawaan antar tab, 
-            // jadi kita refresh manual saat ada aksi.
         }
 
         function loadLocalData() {
             const data = localStorage.getItem('guestbook_local_data');
             const msgs = data ? JSON.parse(data) : [];
-            // Sort terbaru di atas
             msgs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             renderMessages(msgs);
         }
@@ -190,12 +229,12 @@
                 id: 'local_' + Date.now(),
                 name: name,
                 text: text,
-                timestamp: new Date().toISOString(), // Simpan string ISO
+                timestamp: new Date().toISOString(),
                 userId: 'local-user'
             });
             
             localStorage.setItem('guestbook_local_data', JSON.stringify(msgs));
-            loadLocalData(); // Refresh UI
+            loadLocalData(); 
         }
 
         // --- HANDLER FORM ---
@@ -210,17 +249,22 @@
 
             try {
                 if (useLocalStorage) {
-                    // Simpan Lokal
                     saveLocalData(name, text);
-                    // Simulasi delay jaringan sedikit biar terasa 'real'
                     await new Promise(r => setTimeout(r, 500)); 
                 } else {
-                    // Simpan Cloud
-                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME), {
+                    // Logic kirim ke cloud
+                    let colRef;
+                    if (typeof __firebase_config !== 'undefined') {
+                        colRef = collection(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME);
+                    } else {
+                        colRef = collection(db, 'guestbook_public');
+                    }
+
+                    await addDoc(colRef, {
                         name: name,
                         text: text,
                         timestamp: serverTimestamp(),
-                        userId: auth.currentUser.uid
+                        userId: auth.currentUser ? auth.currentUser.uid : 'anon'
                     });
                 }
                 form.reset();
@@ -242,7 +286,13 @@
                 localStorage.setItem('guestbook_local_data', JSON.stringify(newData));
                 loadLocalData();
             } else {
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME, id));
+                 let docRef;
+                 if (typeof __firebase_config !== 'undefined') {
+                    docRef = doc(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME, id);
+                 } else {
+                    docRef = doc(db, 'guestbook_public', id);
+                 }
+                await deleteDoc(docRef);
             }
         };
 
